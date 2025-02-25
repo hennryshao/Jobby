@@ -1,0 +1,1405 @@
+介绍
+Scraping Browser 简介
+了解 Bright Data 的 Scraping Browser 如何通过强大的代理网络、浏览器自动化和完全解锁功能简化多步骤数据收集。
+
+Scraping Browser 是我们解锁器抓取套件的一部分，旨在简化您从浏览器收集多步骤数据的过程。
+
+您的抓取代码在我们的专用浏览器上无缝运行，利用多个代理网络（包括住宅 IP）并管理每个页面的完全解锁，包括自定义标头、指纹识别、CAPTCHA 解决等。
+
+通过标准浏览库（如 、 和 ）轻松访问和导航您的目标网站（在此处查看我们的完整列表），以无限规模和无限并发会话提取您需要的精确数据。puppeteerplaywrightselenium
+
+最适合
+无缝导航网站、填写表单、单击按钮、滚动以加载完整页面、悬停、解决 CAPTCHA 以及更多交互式作
+
+Puppeteer、 和集成，可根据需要灵活地增加或减少活动浏览器会话的数量。playwrightselenium
+
+没有可靠、可扩展的内部浏览器解锁基础设施的团队
+
+快速开始
+只需几个步骤即可开始使用 Bright Data 的 Scraping Browser。按照本指南设置您的代理、验证您的帐户并开始抓取。
+
+如果您尚未注册 Bright Data，您可以注册 免费，在添加付款方式时，您将 获得 5 USD 的积分以开始使用！
+
+1
+登录
+
+2
+导航到 My Zones
+
+
+在 My Zones 页面的 Scraping Browser 下，单击 Get started
+
+3
+为您的 Scraping Browser 分配一个名称
+
+请选择一个有意义的名称，因为区域名称一旦创建就无法更改。
+
+4
+单击 Add
+
+在继续之前，请验证您的帐户
+
+
+配置：
+如何配置抓取浏览器
+了解如何使用您的凭据设置和配置 Bright Data 的 Scraping Browser、运行示例脚本以及导航实时浏览器会话。按照我们的详细说明确保高效的网页抓取。
+
+要开始使用，请获取您的凭据 - 您将用于 Web 自动化工具的用户名和密码。您可以在刚刚创建的 Scraping Browser 区域的 “Overview” 选项卡中找到它们。我们假设您已经安装了首选的 Web 自动化工具。如果没有，请安装它。
+
+示例代码
+const puppeteer = require('puppeteer-core');  
+// Enter your zone name and password below
+const AUTH = 'USER:PASS';  
+const SBR_WS_ENDPOINT = `wss://${AUTH}@brd.superproxy.io:9222`;  
+  
+async function main() {  
+    console.log('Connecting to Scraping Browser...');  
+    const browser = await puppeteer.connect({  
+        browserWSEndpoint: SBR_WS_ENDPOINT,  
+   });  
+    try {  
+        console.log('Connected! Navigating...');  
+        const page = await browser.newPage();  
+        // Enter your test URL below
+        await page.goto('https://example.com', { timeout: 2 * 60 * 1000 });  
+        console.log('Taking screenshot to page.png');  
+        await page.screenshot({ path: './page.png', fullPage: true });  
+   console.log('Navigated! Scraping page content...');  
+ const html = await page.content();  
+ console.log(html)  
+ // CAPTCHA solving: If you know you are likely to encounter a CAPTCHA on your target page, add the following few lines of code to get the status of Scraping Browser's automatic CAPTCHA solver   
+ // Note 1: If no captcha was found it will return not_detected status after detectTimeout   
+ // Note 2: Once a CAPTCHA is solved, if there is a form to submit, it will be submitted by default   
+ // const client = await page.target().createCDPSession();  
+ // const {status} = await client.send('Captcha.solve', {detectTimeout: 30*1000});   
+ // console.log(`Captcha solve status: ${status}`)   
+    } finally {  
+        await browser.close();  
+   }  
+}  
+  
+if (require.main === module) {  
+    main().catch(err => {  
+        console.error(err.stack || err);  
+        process.exit(1);  
+   });  
+}
+
+运行脚本
+将上面的代码保存为 （不要忘记输入您的凭据！） 并使用以下命令运行它：script.js
+node script.js
+
+查看实时浏览器会话
+Scraping Browser Debugger 使开发人员能够与 Chrome Dev Tools 一起检查、分析和微调他们的代码，从而获得更好的控制、可见性和效率。您可以集成以下代码片段，以便为每个会话自动启动 devtools：
+// Node.js Puppeteer - launch devtools locally  
+  
+const { exec } = require('child_process');  
+const chromeExecutable = 'google-chrome';  
+  
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));  
+const openDevtools = async (page, client) => {  
+    // get current frameId  
+    const frameId = page.mainFrame()._id;  
+    // get URL for devtools from scraping browser  
+    const { url: inspectUrl } = await client.send('Page.inspect', { frameId });  
+    // open devtools URL in local chrome  
+    exec(`"${chromeExecutable}" "${inspectUrl}"`, error => {  
+        if (error)  
+            throw new Error('Unable to open devtools: ' + error);  
+    });  
+    // wait for devtools ui to load  
+    await delay(5000);  
+};  
+  
+const page = await browser.newPage();  
+const client = await page.target().createCDPSession();  
+await openDevtools(page, client);  
+await page.goto('http://example.com');
+
+每个会话一个导航
+抓取浏览器会话的结构允许每个会话进行一次初始导航。此初始导航是指加载要从中提取数据的目标站点的第一个实例。在此之后，用户可以在同一会话中使用单击、滚动和其他交互式作自由导航网站。但是，要从初始导航阶段开始新的抓取作业，无论是在同一站点还是不同站点上，都必须开始新的会话。
+
+会话时间限制
+Scraping Browser 有 2 种超时，旨在保护我们的客户免受不受控制的使用。
+
+空闲会话超时：如果浏览器会话在空闲模式下保持打开状态 5 分钟及以上，这意味着没有使用，则 Scraping Browser 将自动超时会话。
+最大会话长度超时：抓取浏览器会话最多可持续 30 分钟。一旦达到最大会话时间，会话将自动超时。
+
+
+特征1：禁用 Captcha Solver
+默认情况下，作为我们完全代理解锁解决方案的一部分，Scraping Browser 还可以解决在返回代理请求时遇到的 CAPTCHA。
+
+禁用 CAPTCHA 求解器时，我们的解锁算法仍然会处理寻找最佳代理网络、自定义标头、指纹识别等整个不断变化的流程，但故意不自动解决 CAPTCHA，为您的团队提供轻量级、简化的解决方案，从而扩大您潜在的抓取机会的范围。
+
+最适合：
+
+从网站抓取数据而不被阻止
+模拟真实用户的 Web 行为
+内部没有解锁基础设施且不希望他们的爬虫程序自动解决 CAPTCHA 的团队
+
+
+特征2
+地理位置定位
+定位国家/地区或地理位置中的特定对等方，以进行精确的地理定位数据收集。
+
+Scraping Browser 会自动为您的会话选择最佳对等位置，在大多数情况下减少了手动配置的需要。手动地理位置定位在访问受区域限制或特定于位置的数据时非常有用。
+
+国家/地区 - 定位来自特定国家/地区的对等人员
+Geolocation radius （地理位置半径） – 使用精确的纬度、经度和半径来模拟精确的物理位置来定位对等方，以实现更精细的地理定位数据收集。
+​
+国家
+在 Bright Data 终端节点中的凭据后面添加标志，后跟该国家/地区的 2 个字母的 ISO 代码。-countryUSER
+
+例如，在美国使用 Puppeteer 抓取浏览器：
+
+
+NodeJS， 木偶师
+
+const SBR_WS_ENDPOINT = `wss://${USERNAME-country-us:PASSWORD}@brd.superproxy.io:9222`;
+欧洲区域您可以按照与上述“国家/地区”相同的方式定位整个欧盟区域，方法是在请求中的“国家/地区”后添加“eu”：“-country-eu”。
+
+使用 -country-eu 发送的请求将使用来自以下国家/地区之一的 IP，这些 IP 会自动包含在“eu”中：AL, AZ, KG, BA, UZ, BI, XK, SM, DE, AT, CH, UK, GB,IE, IM, FR, ES, NL, IT, PT, BE, AD, MT, MC, MA, LU, TN, DZ, GI, LI, SE, DK, FI, NO, AX, IS, GG, JE, EU, GL, VA, FX, FO.
+
+​
+地理位置半径
+使用该函数可使用精确的纬度、经度和半径动态更改代理的位置。Proxy.setLocation
+
+特征3
+抓取浏览器 Playground
+使用 Playground 尝试 Scraping Browser。运行或编辑脚本、查看实时日志和浏览器交互。目前支持 Puppeteer 和 JavaScript。
+
+Playground 是一个用于试验 Scraping Browser 的代码编辑器。使用此工具，您可以运行现成的示例脚本，也可以编辑脚本并运行自己的脚本以进行测试。 Playground 支持的库、语言和功能
+
+虽然 Scraping Browser 支持所有常见的库和语言，但当前版本的 Playground 可以与 Puppeteer 和 JavaScript 一起使用。我们承诺很快就会添加其余的！
+
+请注意，任何涉及与用户端基础设施连接的功能都将在生产中受支持，但在 Playground 中不受支持，例如将文件保存到用户的文件系统或使用 Cheerio 等预装库。要测试 Scraping Browser 的全部功能，请使用您通常的编码环境。
+
+​
+Playground 功能
+代码编辑器：
+默认情况下，代码编辑器将托管一个示例爬虫脚本
+脚本示例可以自由编辑，也可以包括完全删除它们并从头开始构建任何自定义脚本以使用 Scraping Browser 运行
+一个重置按钮，用于恢复为原始示例脚本
+控制台日志视图
+Web 交互和结果视图：显示通过浏览器的原始 HTML 或可视化浏览器交互。
+playground-features.png
+
+​
+现成示例
+运行现有的示例脚本以立即查看正在运行的产品。示例脚本演示了真实目标站点的抓取。您将能够看到完整的脚本、控制台日志以及浏览器与目标站点交互的可视化效果。
+
+​
+代码编辑
+使用代码编辑器编辑默认示例脚本或将其完全替换为您自己的脚本，并运行任何自定义脚本来查看结果或调试代码。 如果需要，您可以随时单击 reset 按钮并恢复为原始示例脚本。
+
+
+特征4
+抓取浏览器：高级域
+高级域是 Bright Data 分层网站分类系统的一部分。这些网站比其他网站更难解锁，并且需要额外的 Scraping Browser 资源。
+
+​
+启用 Premium 域
+创建抓取浏览器区域时，启用“高级域”开关。
+
+​
+定价
+启用后，保费价格将反映在“估计成本”部分。
+
+特征5
+抓取浏览器故障排除
+获取 Scraping Browser 的故障排除提示。了解如何使用 Chrome Dev Tools 使用调试程序、分析错误代码和优化 Web 抓取。
+
+​
+抓取浏览器调试器
+Web 抓取项目通常需要与目标网站进行复杂的交互，而调试对于识别和解决开发过程中发现的问题至关重要。Scraping Browser Debugger 是一种宝贵的资源，使您能够与 Chrome Dev Tools 一起检查、分析和微调您的代码，从而获得更好的控制、可见性和效率。
+
+​
+在哪里找到它
+我们的 Scraping Browser Debugger 可以通过两种方法启动：
+
+通过控制面板手动
+
+通过脚本远程
+
+在下面选择您的首选方法以查看更多：
+
+通过控制面板手动
+通过脚本远程
+可以在 Bright Data 控制面板中轻松访问 Scraping Browser Debugger。请执行以下步骤：
+
+在控制面板中，转到 My Zones
+
+单击您的特定 Scraping Browser 区域
+
+单击 Overview 选项卡
+
+在右侧，单击如下所示的“Chrome Dev Tools Debugger”按钮：
+
+
+
+开始使用调试器和Chrome开发工具
+1
+打开一个 Scraping Browser 会话
+
+确保您有一个活动的 Scraping Browser 会话
+
+如果您还不知道如何启动抓取浏览器会话，请参阅我们的快速入门指南。
+
+2
+启动 Debugger
+
+会话启动并运行后，您现在可以启动 Debugger。
+
+单击 '访问参数' 选项卡中的 Debugger 按钮以启动 Scraping Browser Debugger 界面（请参阅上面的屏幕截图）
+
+3
+连接您的实时浏览器会话
+
+在 Debugger 界面中，您将找到实时 Scraping Browser 会话的列表。
+
+选择要调试的首选会话
+
+单击会话链接或将其复制/粘贴到您选择的浏览器中，这将在 Debugger 和您选择的会话之间建立连接。
+
+
+
+​
+利用 Chrome 开发工具
+现在，Scraping Browser Debugger 连接到您的实时会话后，您可以访问 Chrome Dev Tools 的强大功能。
+
+利用 Dev Tools 界面检查 HTML 元素、分析网络请求、调试 JavaScript 代码和监控性能。利用断点、控制台日志记录和其他调试技术来识别和解决代码中的问题。
+
+test-sites.png
+
+​
+在本地自动打开 devtools 以查看您的实时浏览器会话
+如果您想在每个会话上自动启动 devtools 以查看您的实时浏览器会话，您可以集成以下代码片段：
+
+NodeJS - 木偶师
+
+// Launch devtools locally
+
+const { exec } = require('child_process');
+const chromeExecutable = 'google-chrome';
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const openDevtools = async (page, client) => {
+    // get current frameId
+    const frameId = page.mainFrame()._id;
+    // get URL for devtools from scraping browser
+    const { url: inspectUrl } = await client.send('Page.inspect', { frameId });
+    // open devtools URL in local chrome
+    exec(`"${chromeExecutable}" "${inspectUrl}"`, error => {
+        if (error)
+            throw new Error('Unable to open devtools: ' + error);
+    });
+    // wait for devtools ui to load
+    await delay(5000);
+};
+
+const page = await browser.newPage();
+const client = await page.target().createCDPSession();
+await openDevtools(page, client);
+await page.goto('http://example.com');
+​
+调试器演练
+查看下面的 Scraping Browser Debugger 的运行情况
+
+
+​
+错误代码
+在下面分析您可能收到的一些常见错误代码：
+
+错误代码	意义	您能做些什么呢？
+407	远程浏览器端口问题	请检查您的远程浏览器的端口。Scraping Browser 的正确端口是默认 port：9222，或者如果您专门使用 Selenium，请使用 port：9515
+403	身份验证错误	检查身份验证凭据（用户名、密码）并检查您是否使用了 Bright Data 控制面板中的正确“浏览器 API”区域
+503	服务不可用	我们现在可能会扩展浏览器以满足需求。尝试在 1 分钟后重新连接。
+
+
+标准 CDP 功能
+探索 Scraping Browser 的基本 CDP 功能，从设置 cookie 到国家/地区定位。学习使用这些常见的 Puppeteer 和 Playwright 命令优化 Web 抓取。
+
+Scraping Browser支持CDP，因此所有puppeteer功能/特性都可以在我们的浏览器中使用。您可以在官方 puppeteer 文档页面上找到所有 puppeteer API 文档和使用示例。我们还添加了一些特定于 Bright Data 的自定义 CDP 事件，这些事件也很有用。
+
+以下是一些常见的浏览器导航功能，可帮助您入门。
+获取页面html
+const page = await browser.newPage();  
+await page.goto('https://example.com');  
+const html = await page.content();
+
+单击元素
+// node.js puppeteer   
+const page = await page.newPage();  
+await page.goto('https://example.com');  
+await page.click('a[href]');
+
+滚动到页面底部
+// node.js puppeteer   
+const page = await page.newPage();  
+await page.goto('https://example.com');  
+await page.evaluate(()=>window.scrollBy(0, window.innerHeight));
+
+截取屏幕截图
+// More info at https://pptr.dev/api/puppeteer.page.screenshot  
+await page.screenshot({ path: 'screenshot.png', fullPage: true });
+
+设置cookie
+const page = await browser.newPage();  
+await page.setCookie({name: 'LANG', value: 'en-US', domain: 'example.com'});  
+await page.goto('https://example.com');
+
+阻止终端节点
+
+// connect to a remote browser...
+const blockedUrls = ['*doubleclick.net*'];
+const page = await browser.newPage();
+const client = await page.target().createCDPSession();
+await client.send('Network.enable');
+await client.send('Network.setBlockedURLs', {urls: blockedUrls});
+await page.goto('https://washingtonpost.com');
+
+
+国家/地区定位
+
+使用 Scraping Browser 时，可以使用与我们的其他代理产品相同的国家/地区定位参数。
+
+设置脚本时，请在 Bright Data 端点中的“USER”凭证后面添加标志，后跟该国家/地区的 2 个字母的 ISO 代码。-country
+const SBR_WS_ENDPOINT = `wss://${USER-country-us:PASS}@brd.superproxy.io:9222`;
+
+在上面的示例中，我们在脚本中添加了 Bright Data 端点，因此我们的请求将来自美国（“我们”）。-country-us
+
+欧洲区域
+您可以按照与上述“国家/地区”相同的方式定位整个欧盟区域，只需在请求中的“国家/地区”后添加“eu”即可：使用 发送的请求将使用来自以下国家/地区之一的 IP，这些 IP 将自动包含在“eu”中：-country-eu-country-eu
+AL, AZ, KG, BA, UZ, BI, XK, SM, DE, AT, CH, UK, GB, IE, IM, FR, ES, NL, IT, PT, BE, AD, MT, MC, MA, LU, TN, DZ, GI, LI, SE, DK, FI, NO, AX, IS, GG, JE, EU, GL, VA, FX, FO
+
+自定义 CDP 函数
+除了标准的CDP功能外，Scraping Browser还提供了一些强大的自定义CDP功能。
+
+​
+Captcha Solver
+使用 Scraping Browser 导航页面时，我们集成的 CAPTCHA 求解器默认会自动解决所有 CAPTCHA。您可以使用以下自定义 CDP 函数在代码中监控此自动求解过程。
+
+CAPTCHA Solver - 自动求解
+
+Captcha.solve 验证码
+
+使用此命令可返回验证码已解决、失败或未检测到后的状态。 使用此命令可返回验证码已解决、失败或未检测到后的状态。
+
+
+Captcha.solve 验证码
+
+SolveResult 解决方案
+
+SolveStatus
+
+Captcha.solve({
+    detectTimeout?: number // Detect timeout in millisecond for solver to detect captcha  
+    options?: CaptchaOptions[] // Configuration options for captcha solving  
+}) : SolveResult
+例子
+
+
+NodeJS - 木偶师
+
+Python - 剧作家
+
+const page = await browser.newPage();
+const client = await page.target().createCDPSession();
+await page.goto('[https://site-with-captcha.com](https://site-with-captcha.com/)');  
+
+// Note 1: If no captcha was found it will return not_detected status after detectTimeout   
+// Note 2: Once a CAPTCHA is solved, if there is a form to submit, it will be submitted by default   
+
+const client = await page.target().createCDPSession();  
+const {status} = await client.send('Captcha.solve', {detectTimeout: 30*1000});   
+console.log(`Captcha solve status: ${status}`)
+如果 CAPTCHA 破解失败，请尝试重试。如果问题仍然存在，请提交支持请求，详细说明您遇到的具体问题。
+
+
+用于 CAPTCHA 状态的自定义 CDP 命令
+
+使用以下命令来确定 CAPTCHA 解决流程中更具体的阶段：
+
+Captcha.detected	Scraping Browser 遇到了 CAPTCHA 并开始解决它
+Captcha.solveFinished	Scraping Browser 成功破解了 CAPTCHA
+Captcha.solveFailed	Scraping Browser 无法解决 CAPTCHA
+Captcha.waitForSolve	抓取浏览器等待 CAPTCHA 求解器完成
+
+例子
+
+异步
+同步
+以下代码设置 CDP 会话、侦听 CAPTCHA 事件并处理超时：
+
+
+NodeJS - 木偶师
+
+Python - 剧作家
+
+// Node.js - Puppeteer - waiting for CAPTCHA solving events  
+const client = await page.target().createCDPSession();   
+await new Promise((resolve, reject)=>{   
+  client.on('Captcha.solveFinished', resolve);   
+  client.on('Captcha.solveFailed', ()=>reject(new Error('Captcha failed')));   
+  setTimeout(reject, 5 * 60 * 1000, new Error('Captcha solve timeout'));  
+});
+
+Selenium 不支持异步服务器驱动的事件，如 Puppeteer 和 Playwright。
+
+该命令等待 Scraping Browser 的 CAPTCHA 求解程序完成。Captcha.waitForSolve
+
+Python - Selenium
+
+# Python Selenium - Waiting for Captcha to auto-solve after navigate  
+driver.execute('executeCdpCommand', {  
+    'cmd': 'Captcha.waitForSolve',  
+    'params': {},  
+})
+
+CAPTCHA Solver - 手动控制
+如果您想手动配置或完全禁用我们的默认 CAPTCHA 求解器，而是手动调用求解器或自行求解，请参阅以下 CDP 命令和功能。
+
+
+Captcha.set自动解决
+
+此命令用于控制 CAPTCHA 的自动求解。您可以禁用自动求解或为不同的 CAPTCHA 类型配置算法并手动触发此功能：
+
+
+Captcha.set自动解决
+
+CaptchaOptions 验证码选项
+
+Captcha.setAutoSolve({  
+  autoSolve: boolean // Whether to automatically solve captcha after navigate  
+  options?: CaptchaOptions[] // Configuration options for captcha auto-solving  
+}) : void
+在会话中完全禁用自动求解器的 CDP 命令示例：
+
+
+NodeJS - 木偶师
+
+Python - 剧作家
+
+-硒
+
+# Python Playwright - Disable Captcha auto-solver completely  
+page = await browser.new_page()  
+client = await page.context.new_cdp_session(page)  
+await client.send('Captcha.setAutoSolve', {'autoSolve': False}):
+
+仅对特定 CAPTCHA 类型禁用自动求解器 - 示例
+
+
+NodeJS - 木偶师
+
+Python - 剧作家
+
+# Python Playwright - Disable Captcha auto-solver for ReCaptcha only  
+page = await browser.new_page()  
+client = await page.context.new_cdp_session(page)  
+await client.send('Captcha.setAutoSolve', {  
+    'autoSolve': True,  
+    'options': [{  
+        'type': 'usercaptcha',  
+        'disabled': True,  
+    }],  
+})
+
+手动破解 CAPTCHA - 示例
+
+
+NodeJS - 木偶师
+
+Python - 剧作家
+
+Python - Selenium
+
+# Python Playwright- manually solving CAPTCHA after navigation  
+page = await browser.new_page()  
+client = await page.context.new_cdp_session(page)  
+await client.send('Captcha.setAutoSolve', {'autoSolve': False})  
+await page.goto('https://site-with-captcha.com', timeout=2*60_000)  
+solve_result = await client.send('Captcha.solve', {'detectTimeout': 30_000})  
+print('Captcha solve status:', solve_result['status'])
+
+其他 Captcha 类型的 CaptchaOptions
+
+对于以下三种 CAPTCHA 类型，我们支持以下附加选项来控制和配置我们的自动求解算法。
+
+CF 挑战赛
+HCaptcha
+用户验证码 （reCAPTCHA）
+CF 挑战赛
+
+timeout: 40000  
+selector: '#challenge-body-text, .challenge-form'  
+check_timeout: 300  
+error_selector: '#challenge-error-title'  
+success_selector: '#challenge-success[style*=inline]'  
+check_success_timeout: 300  
+btn_selector: '#challenge-stage input[type=button]'  
+cloudflare_checkbox_frame_selector: '#turnstile-wrapper iframe'  
+checkbox_area_selector: '.ctp-checkbox-label .mark'  
+wait_timeout_after_solve: 500  
+wait_networkidle: {timeout: 500}
+
+Emulation Functions
+
+Emulation.getSupportedDevices
+
+Use this command to get a list of all possible devices that can be emulated. This method returns an array of device options that can be used with the setDevice command.
+
+Example
+
+Emulation.getSupportedDevices().then(devices => { console.log(devices);});
+
+Emulation.setDevice
+
+Once you’ve received the list above of supported devices, you can emulate a specific device using the Emulation.setDevice command. This command changes the screen width, height, userAgent, and devicePixelRatio to match the specified device.
+
+
+Usage
+
+Example
+
+Emulation.setDevice({device: '[device_name]'});
+Landscape mode
+If you wish to change the orientation to landscape (for devices that support it), add the string after the .landscapedevice_name
+
+Example
+
+Emulation.setDevice({device: 'iPhone X landscape'});
+
+Custom Client SSL/TLS Certificates
+Use this command to install custom client SSL/TLS certificates where required for specific domain authentication. These certificates are applied for the duration of a single Scraping Browser session and are automatically removed once the session ends.
+
+
+Browser.addCertificate
+
+
+Browser.addCertificate(params: {
+  cert: string // base64 encoded certificate file
+  pass: string // password for the certificate
+}) : void
+
+Code examples
+
+Replace placeholder values with your valid Scraping Browser credentials.USER:PASS
+
+Replace with the actual path to your certificate file. This file should be a valid SSL/TLS client certificate in .pfx format.client.pfx
+
+Replace with the actual password for the certificate.secret
+
+
+NodeJS - Puppeteer
+
+Python - Selenium
+
+const puppeteer = require('puppeteer-core');
+const fs = require('fs/promises');
+const {
+  AUTH = 'USER:PASS',
+  TARGET_URL = 'https://example.com',
+  CERT_FILE = 'client.pfx',
+  CERT_PASS = 'secret',
+} = process.env;
+
+async function scrape(url = TARGET_URL, file = CERT_FILE, pass = CERT_PASS) {
+  if (AUTH == 'USER:PASS') {
+    throw new Error(`Provide Scraping Browsers credentials in AUTH`
+        + ` environment variable or update the script.`);
+  }
+  console.log(`Connecting to Browser...`);
+  const browserWSEndpoint = `wss://${AUTH}@brd.superproxy.io:9222`;
+  const browser = await puppeteer.connect({ browserWSEndpoint });
+  try {
+    console.log(`Connected! Installing ${file} certificate...`);
+    const page = await browser.newPage();
+    const client = await page.createCDPSession();
+    const cert = (await fs.readFile(CERT_FILE)).toString('base64');
+    await client.send('Browser.addCertificate', { cert, pass });
+    console.log(`Installed! Navigating to ${url}...`);
+    await page.goto(url, { timeout: 2 * 60 * 1000 });
+    console.log(`Navigated! Scraping page content...`);
+    const data = await page.content();
+    console.log(`Scraped! Data: ${data}`);
+  } finally {
+    await browser.close();
+  }
+}
+
+scrape();
+
+
+Scraping Browser Code Examples
+Explore detailed code examples for using Bright Data’s Scraping Browser with various technologies, including Playwright, Puppeteer, and Selenium.
+
+Below are examples of Scraping Browser usage in various scenarios and libraries.
+
+Please make sure to install required libraries before continuing
+Basic :Simple scraping of targeted page
+
+Select your pefered tech-stack
+NodeJS
+Python
+C#
+
+Playwright
+
+Puppeteer
+
+Selenium
+
+#!/usr/bin/env node
+const playwright = require('playwright');
+const {
+    AUTH = 'USER:PASS',
+    TARGET_URL = 'https://example.com',
+} = process.env;
+
+async function scrape(url = TARGET_URL) {
+    if (AUTH == 'USER:PASS') {
+        throw new Error(`Provide Scraping Browsers credentials in AUTH`
+            + ` environment variable or update the script.`);
+    }
+    console.log(`Connecting to Browser...`);
+    const endpointURL = `wss://${AUTH}@brd.superproxy.io:9222`;
+    const browser = await playwright.chromium.connectOverCDP(endpointURL);
+    try {
+        console.log(`Connected! Navigating to ${url}...`);
+        const page = await browser.newPage();
+        await page.goto(url, { timeout: 2 * 60 * 1000 });
+        console.log(`Navigated! Scraping page content...`);
+        const data = await page.content();
+        console.log(`Scraped! Data: ${data}`);
+    } finally {
+        await browser.close();
+    }
+}
+
+if (require.main == module) {
+    scrape().catch(error => {
+        console.error(error.stack || error.message || error);
+        process.exit(1);
+    });
+}
+
+
+captcha:Open a page and wait for captcha to solve
+#!/usr/bin/env node
+const playwright = require('playwright');
+const {
+    AUTH = 'USER:PASS',
+    TARGET_URL = 'https://example.com',
+} = process.env;
+
+async function scrape(url = TARGET_URL) {
+    if (AUTH == 'USER:PASS') {
+        throw new Error(`Provide Scraping Browsers credentials in AUTH`
+            + ` environment variable or update the script.`);
+    }
+    console.log(`Connecting to Browser...`);
+    const endpointURL = `wss://${AUTH}@brd.superproxy.io:9222`;
+    const browser = await playwright.chromium.connectOverCDP(endpointURL);
+    try {
+        console.log(`Connected! Navigating to ${url}...`);
+        const page = await browser.newPage();
+        const client = await page.context().newCDPSession(page);
+        await page.goto(url, { timeout: 2 * 60 * 1000 });
+        console.log(`Navigated! Waiting captcha to detect and solve...`);
+        const { status } = await client.send('Captcha.waitForSolve', {
+            detectTimeout: 10 * 1000,
+        });
+        console.log(`Captcha status: ${status}`);
+    } finally {
+        await browser.close();
+    }
+}
+
+if (require.main == module) {
+    scrape().catch(error => {
+        console.error(error.stack || error.message || error);
+        process.exit(1);
+    });
+}
+
+advance :Inspect scraping session, advanced scraping using js snippets
+#!/usr/bin/env node
+const playwright = require('playwright');
+const {
+    AUTH = 'USER:PASS',
+    TARGET_URL = 'https://example.com',
+} = process.env;
+
+async function scrape(url = TARGET_URL) {
+    if (AUTH == 'USER:PASS') {
+        throw new Error(`Provide Scraping Browsers credentials in AUTH`
+            + ` environment variable or update the script.`);
+    }
+    console.log(`Connecting to Browser...`);
+    const endpointURL = `wss://${AUTH}@brd.superproxy.io:9222`;
+    const browser = await playwright.chromium.connectOverCDP(endpointURL);
+    try {
+        console.log(`Connected! Starting inspect session...`);
+        const page = await browser.newPage();
+        const client = await page.context().newCDPSession(page);
+        const { frameTree: { frame } } = await client.send('Page.getFrameTree');
+        const { url: inspectUrl } = await client.send('Page.inspect', {
+            frameId: frame.id,
+        });
+        console.log(`You can inspect this session at: ${inspectUrl}.`);
+        console.log(`Scraping will continue in 10 seconds...`);
+        await sleep(10);
+        console.log(`Navigating to ${url}...`);
+        await page.goto(url, { timeout: 2 * 60 * 1000 });
+        console.log(`Navigated! Scraping paragraphs...`);
+        const data = await page.$$eval('p', els => els.map(el => el.innerText));
+        console.log(`Scraped! Data:`, data);
+        console.log(`Session will be closed in 1 minute...`);
+        await sleep(60);
+    } finally {
+        console.log(`Closing session.`);
+        await browser.close();
+    }
+}
+
+function sleep(seconds) {
+    return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+}
+
+if (require.main == module) {
+    scrape().catch(error => {
+        console.error(error.stack || error.message || error);
+        process.exit(1);
+    });
+}
+
+
+Scraping Browser FAQs
+Find answers to common questions about Bright Data’s Scraping Browser, including supported languages, debugging tips, and integration guidelines.
+
+
+How do I configure Scraping Browser to work from a specific country?
+
+When using the Scraping Browser, the same country-targeting parameter is available to use as in other Bright Data proxy products.
+
+Specific country
+
+When setting up your script, add the -country flag, after your USER credentials within the Bright Data endpoint, followed by the 2-letter ISO code for that country.
+
+For example, Scraping Browser using Puppeteer in the USA:
+
+
+NodeJS, Puppeteer
+
+const SBR_WS_ENDPOINT = `wss://${USERNAME-country-us:PASSWORD}@brd.superproxy.io:9222`;
+EU region
+
+EU region You can target the entire European Union region in the same manner as “Country” above by adding “eu” after “country” in your request: “-country-eu”. Requests sent using -country-eu, will use IPs from one of the countries below which are included automatically within “eu”: AL, AZ, KG, BA, UZ, BI, XK, SM, DE, AT, CH, UK, GB,IE, IM, FR, ES, NL, IT, PT, BE, AD, MT, MC, MA, LU, TN, DZ, GI, LI, SE, DK, FI, NO, AX, IS, GG, JE, EU, GL, VA, FX, FO.
+
+Need Scraping Browser to target a specific geographical radius of proxies?
+
+Check out our Proxy.setLocation/scraping-automation/scraping-browser/features/proxy-location) feature.
+
+
+Which programming languages, libraries, and browser automation tools are supported by Scraping Browser?
+
+Bright Data’s Scraping Browser is compatible with a wide variety of programming languages, libraries, and browser automation tools, offering full native support for Node.js, Python, and Java/C# using puppeteer, playwright, and selenium respectively.
+
+Other languages can usually be integrated as well via the third-party libraries listed below, enabling you to incorporate Scraping Browser directly into your existing tech stack.
+
+Language/Platform	puppeteer	playwright	selenium
+Python	N/A	*playwright-python	*Selenium WebDriver
+JS / Node	*Native	*Native	*WebDriverJS
+Java	Puppeteer Java	Playwright for Java	*Native
+Ruby	Puppeteer-Ruby	playwright-ruby-client	Selenium WebDriver for Ruby
+C#	*.NET: Puppeteer Sharp	Playwright for .NET	*Selenium WebDriver for .NET
+Go	chromedp	playwright-go	Selenium WebDriver for Go
+*Full support			
+
+How can I debug what's happening behind the scenes during my Scraping Browser session?
+
+You can see in real-time what the Scraping Browser is doing on your local machine. This is similar to using setting headless browser to ‘FALSE’ on Puppeteer.
+
+Web scraping projects often require intricate interactions with target websites and debugging is vital for identifying and resolving issues found during the development process.
+
+The Scraping Browser Debugger serves as a valuable resource, enabling you to inspect, analyze, and fine-tune your code alongside Chrome Dev Tools, resulting in better control, visibility, and efficiency.
+
+
+Where do I find the Scraping Browser Debugger?
+
+You can see in real-time what the Scraping Browser is doing on your local machine. This is similar to using setting headless browser to ‘FALSE’ on Puppeteer.
+
+Our Scraping Browser Debugger can be launched via two methods: Manually via Control Panel OR Remotely via your script.
+
+via Control Panel
+via Code (remote)
+To access and launch the debugger session directly from your script, you’ll need to send the CDP command: Page.inspect.
+
+
+Puppeteer
+
+Playwright
+
+Playwright
+
+PuppeteerSharp
+
+Playwright
+
+// Node.js Puppeteer - Inspect page using devtools  
+const page = await browser.newPage();  
+const client = await page.target().createCDPSession();  
+const {frameTree: {frame}} = await client.send('Page.getFrameTree', {});  
+const {url: inspectUrl} = await client.send('Page.inspect', {  
+    frameId: frame.id,  
+});  
+console.log(`Inspect session at ${inspectUrl}`);
+Leveraging Chrome Dev Tools
+
+With the Scraping Browser Debugger now connected to your live session, you gain access to the powerful features of Chrome Dev Tools.
+
+Utilize the Dev Tools interface to inspect HTML elements, analyze network requests, debug JavaScript code, and monitor performance. Leverage breakpoints, console logging, and other debugging techniques to identify and resolve issues within your code.
+
+test-sites.png
+
+
+How to automatically launch devtools locally to view your live browser session?
+
+If you would like to automatically launch devtools on every session to view your live browser session, you can integrate the following code snippet:
+
+NodeJS - Puppeteer
+
+// Node.js Puppeteer - launch devtools locally  
+
+const {
+    exec
+} = require('child_process');
+const chromeExecutable = 'google-chrome';
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const openDevtools = async (page, client) => {
+    // get current frameId  
+    const frameId = page.mainFrame()._id;
+    // get URL for devtools from scraping browser  
+    const {
+        url: inspectUrl
+    } = await client.send('Page.inspect', {
+        frameId
+    });
+    // open devtools URL in local chrome  
+    exec(`"${chromeExecutable}" "${inspectUrl}"`, error => {
+        if (error)
+            throw new Error('Unable to open devtools: ' + error);
+    });
+    // wait for devtools ui to load  
+    await delay(5000);
+};
+
+const page = await browser.newPage();
+const client = await page.target().createCDPSession();
+await openDevtools(page, client);
+await page.goto('http://example.com');
+
+Debugger Walkthrough
+
+Check out the Scraping Browser Debugger in action below
+
+<inser-video-here>
+
+
+How can I see a visual of what's happening in the browser?
+
+Triggering a screenshot
+Launch devtools locally
+You can easily trigger a screenshot of the browser at any time by adding the following to your code:
+
+NodeJS
+
+// node.js puppeteer - Taking screenshot to file screenshot.png 
+await page.screenshot({ path: 'screenshot.png', fullPage: true });
+To take screenshots on Python and C# see here.
+
+
+Why does the initial navigation for certain pages take longer than others?
+
+There is a lot of “behind the scenes” work that goes into unlocking your targeted site.
+
+Some sites will take just a few seconds for navigation, while others might take even up to a minute or two as they require more complex unlocking procedures. As such, we recommend setting your navigation timeout to “2 minutes” to give the navigation enough time to succeed if needed.
+
+You can set your navigation timeout to 2 minutes by adding the following line in your script before your “page.goto” call.
+
+
+Puppeteer
+
+Playwright
+
+PuppeteerSharp
+
+// node.js puppeteer - Navigate to site with 2 min timeout  
+page.goto('<https://example.com>', { timeout: 2*60*1000 });  
+
+What are the most Common Error codes?
+
+Error Code	Meaning	What can you do about it?
+Unexpected server response: 407	An issue with the remote browser’s port	Please check your remote browser’s port. The correct port for Scraping Browser is port:9222
+Unexpected server response: 403	Authentication Error	Check authentication credentials (username, password) and check that you are using the correct “Browser API” zone from Bright Data control panel
+Unexpected server response: 503	Service Unavailable	We are likely scaling browsers right now to meet demand. Try to reconnect in 1 minute.
+
+I can't seem to establish a connection with Scraping Browser, do I have a connection issue?
+
+If you’re experiencing connection issues, you can test your local Scraping Browser connection with a simple curl to the following endpoint:
+
+Shell
+
+curl -v -u USER:PASS https://brd.superproxy.io:9222/json/protocol
+If a JSON is returned within the response:
+Your authentication and connection to Scraping Browser are successful. Confirm you are using these exact configurations in your script.
+
+If you are still facing issues connecting to Scraping Browser, contact support for further assistance.
+
+If a JSON is not returned within the response:
+Check your authentication details from your Scraping Browser zone, and ensure the USER and PASS values are correct.
+
+Verify network Configuration: Confirm your network and/or firewall is not blocking outbound connections to https://brd.superproxy.io:9222.
+
+If the issue persists, please contact support for further assistance.
+
+
+How to Integrate Scraping Browser with .NET Puppeteer Sharp?
+
+Integration with the Scraping browser product with C# requires patching the PuppeteerSharp library to add support for websocket authentication. This can be done like the following:
+
+C# PuppeteerSharp
+
+using PuppeteerSharp;  
+using System.Net.WebSockets;  
+using System.Text;  
+  
+// Set the authentication credentials  
+var auth = "USER:PASS";  
+// Construct the WebSocket URL with authentication  
+var ws = $"wss://{auth}@brd.superproxy.io:9222";  
+// Custom WebSocket factory function  
+async Task<WebSocket> ws_factory(Uri url, IConnectionOptions options, CancellationToken cancellationToken)  
+  
+{  
+    // Create a new ClientWebSocket instance
+    var socket = new ClientWebSocket();  
+    // Extract the user information (username and password) from the URL  
+    var user_info = url.UserInfo;  
+    if (user_info != "")  
+    {  
+        // Encode the user information in Base64 format  
+        var auth = Convert.ToBase64String(Encoding.Default.GetBytes(user_info));  
+        // Set the "Authorization" header of the WebSocket options with the encoded credentials  
+        socket.Options.SetRequestHeader("Authorization", $"Basic {auth}");  
+    }  
+  
+    // Disable the WebSocket keep-alive interval  
+    socket.Options.KeepAliveInterval = TimeSpan.Zero;  
+    // Connect to the WebSocket endpoint  
+    await socket.ConnectAsync(url, cancellationToken);  
+    return socket;  
+}  
+  
+// Create ConnectOptions and configure the options  
+var options = new ConnectOptions()  
+  
+{  
+    // Set the BrowserWSEndpoint to the WebSocket URL  
+    BrowserWSEndpoint = ws,  
+    // Set the WebSocketFactory to the custom factory function  
+    WebSocketFactory = ws_factory,  
+};  
+  
+// Connect to the browser using PuppeteerSharp  
+Console.WriteLine("Connecting to browser...");  
+  
+using (var browser = await Puppeteer.ConnectAsync(options))  
+{  
+    Console.WriteLine("Connected! Navigating...");  
+    // Create a new page instance  
+    var page = await browser.NewPageAsync();  
+    // Navigate to the specified URL  
+    await page.GoToAsync("https://example.com");  
+    Console.WriteLine("Navigated! Scraping data...");  
+    // Get the content of the page  
+    var content = await page.GetContentAsync();  
+    Console.WriteLine("Done!");  
+    Console.WriteLine(content);  
+}
+
+Which coding languages does Scraping Browser support?
+
+Bright Data’s Scraping Browser supports a wide range of programming languages and libraries. We currently have full native support for Node.js and Python using puppeteer, playwright, and selenium, and other languages can be integrated as well using the other libraries below, giving you the flexibility to integrate Scraping Browser right into your current tech stack.
+
+Language/Platform	puppeteer	playwright	selenium
+Python	N/A	playwright-python	Selenium WebDriver
+JS / Node	Native support	Native support	WebDriverJS
+Java	Puppeteer Java	Playwright for Java	Native support
+Ruby	Puppeteer-Ruby	playwright-ruby-client	Selenium WebDriver for Ruby
+C#	.NET: Puppeteer Sharp	Playwright for .NET	Selenium WebDriver for .NET
+Go	chromedp	playwright-go	Selenium WebDriver for Go
+
+How can I debug what's happening behind the scenes during my Scraping Browser session?
+
+You can see in real-time what the Scraping Browser is doing on your local machine. This is similar to using setting headless browser to ‘FALSE’ on Puppeteer.
+
+Web scraping projects often require intricate interactions with target websites and debugging is vital for identifying and resolving issues found during the development process.
+
+The Scraping Browser Debugger serves as a valuable resource, enabling you to inspect, analyze, and fine-tune your code alongside Chrome Dev Tools, resulting in better control, visibility, and efficiency.
+
+
+Where do I find the Scraping Browser Debugger?
+
+You can see in real-time what the Scraping Browser is doing on your local machine. This is similar to using setting headless browser to ‘FALSE’ on Puppeteer.
+
+Our Scraping Browser Debugger can be launched via two methods: Manually via Control Panel OR Remotely via your script.
+
+via Control Panel
+via Code (remote)
+To access and launch the debugger session directly from your script, you’ll need to send the CDP command: Page.inspect.
+
+
+Puppeteer
+
+Playwright
+
+Playwright
+
+PuppeteerSharp
+
+Playwright
+
+// Node.js Puppeteer - Inspect page using devtools  
+const page = await browser.newPage();  
+const client = await page.target().createCDPSession();  
+const {frameTree: {frame}} = await client.send('Page.getFrameTree', {});  
+const {url: inspectUrl} = await client.send('Page.inspect', {  
+    frameId: frame.id,  
+});  
+console.log(`Inspect session at ${inspectUrl}`);
+Leveraging Chrome Dev Tools
+
+With the Scraping Browser Debugger now connected to your live session, you gain access to the powerful features of Chrome Dev Tools.
+
+Utilize the Dev Tools interface to inspect HTML elements, analyze network requests, debug JavaScript code, and monitor performance. Leverage breakpoints, console logging, and other debugging techniques to identify and resolve issues within your code.
+
+test-sites.png
+
+
+How to automatically launch devtools locally to view your live browser session?
+
+If you would like to automatically launch devtools on every session to view your live browser session, you can integrate the following code snippet:
+
+NodeJS - Puppeteer
+
+// Node.js Puppeteer - launch devtools locally  
+
+const {
+    exec
+} = require('child_process');
+const chromeExecutable = 'google-chrome';
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const openDevtools = async (page, client) => {
+    // get current frameId  
+    const frameId = page.mainFrame()._id;
+    // get URL for devtools from scraping browser  
+    const {
+        url: inspectUrl
+    } = await client.send('Page.inspect', {
+        frameId
+    });
+    // open devtools URL in local chrome  
+    exec(`"${chromeExecutable}" "${inspectUrl}"`, error => {
+        if (error)
+            throw new Error('Unable to open devtools: ' + error);
+    });
+    // wait for devtools ui to load  
+    await delay(5000);
+};
+
+const page = await browser.newPage();
+const client = await page.target().createCDPSession();
+await openDevtools(page, client);
+await page.goto('http://example.com');
+
+Debugger Walkthrough
+
+Check out the Scraping Browser Debugger in action below
+
+<inser-video-here>
+
+
+How can I see a visual of what's happening in the browser?
+
+Triggering a screenshot
+You can easily trigger a screenshot of the browser at any time by adding the following to your code:
+
+NodeJS
+
+// node.js puppeteer - Taking screenshot to file screenshot.png 
+await page.screenshot({ path: 'screenshot.png', fullPage: true });
+To take screenshots on Python and C# see here.
+
+
+Why does the initial navigation for certain pages take longer than others?
+
+There is a lot of “behind the scenes” work that goes into unlocking your targeted site.
+
+Some sites will take just a few seconds for navigation, while others might take even up to a minute or two as they require more complex unlocking procedures. As such, we recommend setting your navigation timeout to “2 minutes” to give the navigation enough time to succeed if needed.
+
+You can set your navigation timeout to 2 minutes by adding the following line in your script before your “page.goto” call.
+
+
+Puppeteer
+
+Playwright
+
+PuppeteerSharp
+
+// node.js puppeteer - Navigate to site with 2 min timeout  
+page.goto('<https://example.com>', { timeout: 2*60*1000 });  
+
+What are the most Common Error codes?
+
+Error Code	Meaning	What can you do about it?
+Unexpected server response: 407	An issue with the remote browser’s port	Please check your remote browser’s port. The correct port for Scraping Browser is port:9222
+Unexpected server response: 403	Authentication Error	Check authentication credentials (username, password) and check that you are using the correct “Browser API” zone from Bright Data control panel
+Unexpected server response: 503	Service Unavailable	We are likely scaling browsers right now to meet demand. Try to reconnect in 1 minute.
+
+I can't seem to connect, do I have a connection issue?
+
+You can check your connection with the following curl:
+
+Shell
+
+curl -v -u USER:PASS https://brd.superproxy.io:9222/json/protocol
+For any other issues please contact support.
+
+
+How to Integrate Scraping Browser with .NET Puppeteer Sharp?
+
+Integration with the Scraping browser product with C# requires patching the PuppeteerSharp library to add support for websocket authentication. This can be done like the following:
+
+C# PuppeteerSharp
+
+using PuppeteerSharp;  
+using System.Net.WebSockets;  
+using System.Text;  
+  
+// Set the authentication credentials  
+var auth = "USER:PASS";  
+// Construct the WebSocket URL with authentication  
+var ws = $"wss://{auth}@zproxy.lum-superproxy.io:9222";  
+// Custom WebSocket factory function  
+async Task<WebSocket> ws_factory(Uri url, IConnectionOptions options, CancellationToken cancellationToken)  
+  
+{  
+    // Create a new ClientWebSocket instance
+    var socket = new ClientWebSocket();  
+    // Extract the user information (username and password) from the URL  
+    var user_info = url.UserInfo;  
+    if (user_info != "")  
+    {  
+        // Encode the user information in Base64 format  
+        var auth = Convert.ToBase64String(Encoding.Default.GetBytes(user_info));  
+        // Set the "Authorization" header of the WebSocket options with the encoded credentials  
+        socket.Options.SetRequestHeader("Authorization", $"Basic {auth}");  
+    }  
+  
+    // Disable the WebSocket keep-alive interval  
+    socket.Options.KeepAliveInterval = TimeSpan.Zero;  
+    // Connect to the WebSocket endpoint  
+    await socket.ConnectAsync(url, cancellationToken);  
+    return socket;  
+}  
+  
+// Create ConnectOptions and configure the options  
+var options = new ConnectOptions()  
+  
+{  
+    // Set the BrowserWSEndpoint to the WebSocket URL  
+    BrowserWSEndpoint = ws,  
+    // Set the WebSocketFactory to the custom factory function  
+    WebSocketFactory = ws_factory,  
+};  
+  
+// Connect to the browser using PuppeteerSharp  
+Console.WriteLine("Connecting to browser...");  
+  
+using (var browser = await Puppeteer.ConnectAsync(options))  
+{  
+    Console.WriteLine("Connected! Navigating...");  
+    // Create a new page instance  
+    var page = await browser.NewPageAsync();  
+    // Navigate to the specified URL  
+    await page.GoToAsync("https://example.com");  
+    Console.WriteLine("Navigated! Scraping data...");  
+    // Get the content of the page  
+    var content = await page.GetContentAsync();  
+    Console.WriteLine("Done!");  
+    Console.WriteLine(content);  
+}
+
+Can I choose the country that the Scraping Browser will scrape from?
+
+This is possible, but not recommended. The reason is that the Scraping Browser utilises Bright Data’s full suite of unblocking capabilities which automatically chooses the best IP type and location to get you the page you want to access.
+
+In case you still want to make the Scraping Browser work from a specific country, simply use the username that includes the country-xx in the configuration.
+
+See the example below for Puppeteer: We added -country-us to our request, so we will send a request originating from the United States (“us”).
+
+const SBR_WS_ENDPOINT = 'wss://brd-customer-<customer_id>-zone-<zone_name>-country-us:<password>@brd.superproxy.io:9222'
+
+
+How does the Scraping Browser pricing work?
+
+Scraping Browser pricing is simple: you only pay for gigabytes of traffic that you transferred through the Scraping Browser.
+
+There is no cost for instances or time using the Scraping Browsers - only traffic.
+
+It doesn’t matter what country you are using, traffic is billed at the same rates. Because you pay by traffic, you probably will want to minimize it.
+
+The only exception to this is premium domains, which cost more per gigabyte, because Bright Data needs to invest a significantly higher amount of effort and resources to unblock. You can find more information about premium domains in your Scraping Browser configuration pages.
+
+
+
+Scraping Browser 
+Example Travel
+import puppeteer from "puppeteer-core";
+
+const URL = "https://www.booking.com/";
+const BROWSER_WS = "wss://brd-customer-hl_afd51056-zone-scraping_browser1:klqv3xfx5yb0@brd.superproxy.io:9222";
+
+function addDays(date, days) {
+  var result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function toBookingTimestamp(date) {
+  return date.toISOString().split('T')[0];
+}
+
+const search_text = "New York";
+const now = new Date();
+const check_in = toBookingTimestamp(addDays(now, 1));
+const check_out = toBookingTimestamp(addDays(now, 2));
+
+// This sample code searches Booking for acommodation in selected location
+// and dates, then returns names, prices and rating for available options.
+
+run(URL);
+
+async function run(url) {
+  console.log("Connecting to browser...");
+  const browser = await puppeteer.connect({
+    browserWSEndpoint: BROWSER_WS,
+  });
+  console.log("Connected! Navigate to site...");
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+  console.log("Navigated! Waiting for popup...");
+  await close_popup(page);
+  await interact(page);
+  console.log("Parsing data...");
+  const data = await parse(page);
+  console.log(`Data parsed: ${JSON.stringify(data, null, 2)}`);
+  await browser.close();
+}
+
+async function close_popup(page) {
+  try {
+    const close_btn = await page.waitForSelector('[aria-label="Dismiss sign-in info."]', { timeout: 25000, visible: true });
+    console.log("Popup appeared! Closing...");
+    await close_btn.click();
+    console.log("Popup closed!");
+  } catch (e) {
+    console.log("Popup didn't appear.");
+  }
+}
+
+async function interact(page) {
+  console.log("Waiting for search form...");
+  const search_input = await page.waitForSelector('[data-testid="destination-container"] input', { timeout: 60000 });
+  console.log("Search form appeared! Filling it...");
+  await search_input.type(search_text);
+  await page.click('[data-testid="searchbox-dates-container"] button');
+  await page.waitForSelector('[data-testid="searchbox-datepicker-calendar"]');
+  await page.click(`[data-date="${check_in}"]`);
+  await page.click(`[data-date="${check_out}"]`);
+  console.log("Form filled! Submitting and waiting for result...");
+  await Promise.all([
+    page.click('button[type="submit"]'),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+  ]);
+};
+
+async function parse(page) {
+  return await page.$$eval('[data-testid="property-card"]', els => els.map(el => {
+    const name = el.querySelector('[data-testid="title"]')?.innerText;
+    const price = el.querySelector('[data-testid="price-and-discounted-price"]')?.innerText;
+    const review_score = el.querySelector('[data-testid="review-score"]')?.innerText ?? '';
+    const [score_str, , , reviews_str = ''] = review_score.split('\n');
+    const score = parseFloat(score_str) || score_str;
+    const reviews = parseInt(reviews_str.replace(/\D/g, '')) || reviews_str;
+    return { name, price, score, reviews };
+  }));
+}
+
+
+Example E-commerce
+import puppeteer from "puppeteer-core";
+
+const URL = "https://www.amazon.com";
+// This sample code searches Amazon for your search term and then
+// returns the list of product and prices.
+// If there is a CAPTCHA, it will be solved automatically.
+
+// enter what you want to type into the search box
+const search_term = "laptop";
+
+
+async function run(){
+  const browser = await puppeteer.connect({
+    browserWSEndpoint: "wss://brd-customer-hl_afd51056-zone-scraping_browser1:klqv3xfx5yb0@brd.superproxy.io:9222",
+  });
+  console.log("Connected to browser...");
+  console.log("Sending requests via residential proxies...");
+  // Create a new page
+  const page = await browser.newPage();
+  page.setDefaultNavigationTimeout(2 * 60 * 1000);
+  // Go to Amazon.com
+  await page.goto(URL, { waitUntil: "domcontentloaded" });
+  console.log("Navigated to home page");
+  await page.waitForSelector("#twotabsearchtextbox", { timeout: 30000 });
+  // Type a search term in the search input
+  await page.type("#twotabsearchtextbox", search_term);
+  console.log("Entered search term");
+  await page.keyboard.press("Enter");
+  // Wait for the products to load
+  await page.waitForSelector(".s-card-container", { timeout: 30000 });
+  console.log("Products loaded, parsing...");
+  const data = await parse_results(page);
+  for (const { title, price } of data)
+    console.log(`Found product: ${title}, ${price}
+`);
+  await browser.close();
+}
+
+async function parse_results(page){
+  return await page.evaluate(()=>{
+    return Array.from(document.querySelectorAll(".s-card-container")).map(el => {
+      return {
+        url: el.querySelector("a")?.getAttribute("href"),
+        title: el.querySelector(`h2 span`)?.innerText,
+        price: el.querySelector(".a-price > .a-offscreen")?.innerText,
+      };
+    });
+  });
+}
+
+run();

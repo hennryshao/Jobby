@@ -1,0 +1,35 @@
+scraping_browser1
+
+Access Details
+
+Host: brd.superproxy.io
+
+Ports:
+9222 (Default)
+9515 (Selenium)
+
+Username:
+brd-customer-hl_afd51056-zone-scraping_browser1
+
+Password:
+klqv3xfx5yb0
+
+Single string formats:
+host:port:username:password
+
+username:password@host:port
+
+host,port,username,password
+
+Configure your code to connect to the Scraping Browser endpoint (instead of using a local browser), using the following URL with embedded credentials (auth+@host):
+
+Puppeteer / Playwright
+wss://brd-customer-hl_afd51056-zone-scraping_browser1:klqv3xfx5yb0@brd.superproxy.io:9222
+
+Selenium
+https://brd-customer-hl_afd51056-zone-scraping_browser1:klqv3xfx5yb0@brd.superproxy.io:9515
+
+
+CustomerID: hl_afd51056
+
+token: 4d01d6a0bdfb10692037eb06b239ab24948123d72d7a009f162a100463fc7e25
