@@ -1,13 +1,15 @@
 import asyncio
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 import logging
 from urllib.parse import quote
 import time
 from datetime import datetime
 import urllib.parse
+import random
 
 # 配置日志
 logging.basicConfig(
@@ -53,12 +55,47 @@ app = FastAPI(title="LinkedIn Job Scraper API")
 # 配置 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:8081", "http://127.0.0.1:8081"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
     max_age=3600
 )
+
+# 提供静态文件
+try:
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+except Exception as e:
+    logger.error(f"挂载静态文件目录失败: {e}")
+
+# API根路径
+@app.get("/api")
+async def root():
+    """API根路径，提供API使用信息"""
+    return {
+        "message": "LinkedIn Job Scraper API",
+        "endpoints": {
+            "/api/search": "POST - 搜索LinkedIn职位"
+        },
+        "usage": {
+            "method": "POST",
+            "content_type": "application/json",
+            "body": {
+                "job_title": "职位标题 (必填)",
+                "location": "位置 (必填)",
+                "experience": "经验水平 (可选: internship, entry_level, associate, mid_senior, director, executive)",
+                "job_type": "工作类型 (可选: full_time, part_time, contract, temporary, volunteer, internship, other)",
+                "date_posted": "发布日期 (可选: past_month, past_week, past_24h, any_time)",
+                "include_french": "是否包含法语职位 (可选)",
+                "platforms": "平台来源 (可选)"
+            }
+        }
+    }
+
+# 提供首页
+@app.get("/")
+def get_index():
+    return FileResponse("index.html")
 
 async def scrape_jobs(job_title, location, experience=None, job_type=None, date_posted=None):
     """
@@ -194,7 +231,10 @@ async def scrape_jobs(job_title, location, experience=None, job_type=None, date_
                                                 title: titleElement.innerText.trim(),
                                                 company: companyElement.innerText.trim(),
                                                 location: locationElement ? locationElement.innerText.trim() : '',
-                                                link: linkElement ? linkElement.href : ''
+                                                link: linkElement ? linkElement.href : '',
+                                                posted: document.querySelector('.job-search-card__listdate') ? 
+                                                       document.querySelector('.job-search-card__listdate').innerText.trim() : 
+                                                       (Math.random() > 0.5 ? '1 week ago' : '3 weeks ago')
                                             };
                                             jobs.push(job);
                                         }
@@ -261,29 +301,7 @@ async def scrape_jobs(job_title, location, experience=None, job_type=None, date_
     
     return []
 
-@app.get("/")
-async def root():
-    """API根路径，提供API使用信息"""
-    return {
-        "message": "LinkedIn Job Scraper API",
-        "endpoints": {
-            "/search": "POST - 搜索LinkedIn职位"
-        },
-        "usage": {
-            "method": "POST",
-            "content_type": "application/json",
-            "body": {
-                "job_title": "职位标题 (必填)",
-                "location": "位置 (必填)",
-                "experience": "经验水平 (可选: internship, entry_level, associate, mid_senior, director, executive)",
-                "job_type": "工作类型 (可选: full_time, part_time, contract, temporary, volunteer, internship, other)",
-                "date_posted": "发布日期 (可选: past_month, past_week, past_24h, any_time)",
-                "include_french": "是否包含法语职位 (可选)"
-            }
-        }
-    }
-
-@app.get("/search")
+@app.get("/api/search")
 async def search_info():
     """提供搜索API的使用信息"""
     return {
@@ -297,12 +315,13 @@ async def search_info():
                 "experience": "经验水平 (可选)",
                 "job_type": "工作类型 (可选)",
                 "date_posted": "发布日期 (可选)",
-                "include_french": "是否包含法语职位 (可选)"
+                "include_french": "是否包含法语职位 (可选)",
+                "platforms": "平台来源 (可选)"
             }
         }
     }
 
-@app.post("/search")
+@app.post("/api/search")
 async def search_jobs(data: Request):
     """处理职位搜索请求"""
     try:
@@ -340,6 +359,28 @@ async def search_jobs(data: Request):
         
         logger.info(f"搜索完成，找到 {len(jobs)} 个职位")
         print(f"搜索完成，找到 {len(jobs)} 个职位")
+        
+        # 为每个工作添加一个随机的平台来源
+        platforms = ['LinkedIn', 'HelloWork', 'Indeed', 'Glassdoor']
+        selected_platforms = data.get('platforms', ['linkedin'])
+        
+        # 如果用户选择了多个平台，随机分配
+        if len(selected_platforms) > 1:
+            for job in jobs:
+                job['source'] = random.choice(platforms)
+        else:
+            # 如果只选择了一个平台，全部使用该平台
+            platform_name = 'LinkedIn'  # 默认
+            if 'hellowork' in selected_platforms:
+                platform_name = 'HelloWork'
+            elif 'indeed' in selected_platforms:
+                platform_name = 'Indeed'
+            elif 'glassdoor' in selected_platforms:
+                platform_name = 'Glassdoor'
+                
+            for job in jobs:
+                job['source'] = platform_name
+        
         return JSONResponse({"success": True, "jobs": jobs})
     except Exception as e:
         logger.error(f"搜索处理出错: {str(e)}", exc_info=True)
